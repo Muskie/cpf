@@ -101,8 +101,9 @@ class DQLAgent:
                 if done:
                     self.trewards.append(treward)
                     self.max_treward = max(self.max_treward, treward)
-                    templ = f'Episode={self.episodes:4d} | '
-                    templ += f'Total Reward={treward:7.3f} | Max={self.max_treward:7.3f}'
+                    # This doesn't print well on Google Colab, but Google has a progress bar/timer
+                    templ = f'Episode{self.episodes:4d} | '
+                    templ += f'Total Reward{treward:7.3f} | Max{self.max_treward:7.3f}'
                     print(templ, end='\r')
                     break
             if len(self.memory) > self.batch_size:
