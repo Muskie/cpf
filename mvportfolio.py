@@ -460,8 +460,9 @@ class MVPortfolio:
                     comparison_check_five = False
                     break  
                     
-        # Smaller is better for Google Colab, so set it globally outside of the class
-        # plt.figure(figsize=(6, 3)) 
+        # Smaller is better for Google Colab
+        plt.figure(figsize=(6, 3)) 
+        plt.rc('legend', fontsize='x-small')
         if(self.bm_returns is not None):
             bm_annual_return = self.annualized_return(self.bm_returns, [1])
             bm_annual_volatility = self.annualized_volatility(self.bm_returns, [1])
@@ -601,8 +602,9 @@ class MVPortfolio:
                     comparison_check_five = False
                     break  
 
-        # Smaller is better for Google Colab, so set it globally outside of the class
-        # plt.figure(figsize=(6, 3)) 
+        # Smaller is better for Google Colab
+        plt.figure(figsize=(6, 3)) 
+        plt.rc('legend', fontsize='x-small')
         if(self.bm_returns is not None):
             benchmark_returns = self.bm_returns[start_date:end_date].cumsum().apply(np.exp)
             plt.plot(benchmark_returns, 'deeppink', lw=1.0, label='Benchmark')
