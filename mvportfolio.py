@@ -6,13 +6,14 @@ from pylab import plt
 from scipy.optimize import minimize
 from prettytable import PrettyTable
 from datetime import datetime
+# I will include these in the Jupyter Notebook as it may help with rendering in Google Colab
 plt.style.use('seaborn-v0_8')
 pd.set_option("display.precision", 5)
 np.set_printoptions(suppress=True,
         formatter={'float': lambda x: f'{x:.4f}'})
 
 import warnings
-warnings.filterwarnings('ignore') # I get a RuntimeWarning: Mean of empty slice. etc
+warnings.filterwarnings('ignore') # I get a RuntimeWarning: Mean of empty slice. Or did so I added this.
 
 # In the future perhaps connect to a database, this opens up more dimension data.
 # The key requirement in the future will be handling strategies that are not as old as others.
@@ -174,10 +175,8 @@ class MVPortfolio:
                 self.asset_class_weights = [0, 0.6, 0.4] # Variation on 60:40 portoflio
             else:
                 # We have all the asset classes
-                # print("We are here")
                 self.asset_class_weights = asset_class_weights
         else:
-            # print("We are actually here")
             self.asset_class_weights = asset_class_weights
 
     # Target asset class weights can be overriden by passing in exacting boundaries (bnds)
@@ -197,7 +196,7 @@ class MVPortfolio:
                                         constraints=None):
         # I let people override contraints and boundaries, constraints is simple, boundaries is convoluted.
         if constraints is None:
-            self.cons = ({'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1}) # I was missing these brackets
+            self.cons = ({'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1}) 
         else:
             self.cons = constraints
 
@@ -371,7 +370,7 @@ class MVPortfolio:
         return daily_portfolio_returns.cumsum().apply(np.exp)
 
     def annual_maximum_sharpe_portfolios(self):
-        # I tried using pandas_market_calendars in the constructor but may need to get more gheto
+        # I tried using pandas_market_calendars in the constructor Google Colab added another hoop but it works
         year_one = self.first_annual_trading_date.year
         last_year = self.last_annual_trading_date.year
         last_year_plus_one = last_year + 1
@@ -390,7 +389,7 @@ class MVPortfolio:
         annual_weight_table = PrettyTable(["Year", "Holding", "Weights"])
         for key, val in annual_weights.items():
             for holding in range(self.noa):
-                annual_weight_table.add_row([key, self.holdings[holding], val[holding].round(2)]) # round for display
+                annual_weight_table.add_row([key, self.holdings[holding], val[holding].round(2)]) # Round for display
             empty_row = [" "] * len(annual_weight_table.field_names)
             if(key != last_year): # This prevents the last empty row
                 annual_weight_table.add_row(empty_row) 
@@ -413,7 +412,7 @@ class MVPortfolio:
 
         # I declare these and overwrite them later if possible
         bm_annual_return = minimum_risk_return
-        # For demoability I do this five times at least in my latest proof of concept.
+        # For demoability I do this five times at least in my current notebook
         comparison_return_one = minimum_risk_return
         comparison_return_two = minimum_risk_return 
         comparison_return_three = minimum_risk_return 
@@ -461,7 +460,8 @@ class MVPortfolio:
                     comparison_check_five = False
                     break  
                     
-        plt.figure(figsize=(10, 6))
+        # Smaller is better for Google Colab, so set it globally outside of the class
+        # plt.figure(figsize=(6, 3)) 
         if(self.bm_returns is not None):
             bm_annual_return = self.annualized_return(self.bm_returns, [1])
             bm_annual_volatility = self.annualized_volatility(self.bm_returns, [1])
@@ -601,7 +601,8 @@ class MVPortfolio:
                     comparison_check_five = False
                     break  
 
-        plt.figure(figsize=(10, 6))
+        # Smaller is better for Google Colab, so set it globally outside of the class
+        # plt.figure(figsize=(6, 3)) 
         if(self.bm_returns is not None):
             benchmark_returns = self.bm_returns[start_date:end_date].cumsum().apply(np.exp)
             plt.plot(benchmark_returns, 'deeppink', lw=1.0, label='Benchmark')

@@ -283,7 +283,7 @@ class InvestingAgent(DQLAgent):
                 state = self._reshape(state)
                 treward += reward
                 if done:
-                    templ = f'Episode={e} | Total Reward={treward:4.2f}'
+                    templ = f'Episode {e} | Total Reward {treward:4.2f}'
                     if verbose:
                         print(templ, end='\r') # Also doesn't print so well on Google Colab
                     break
