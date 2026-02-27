@@ -460,7 +460,7 @@ class MVPortfolio:
                     comparison_check_five = False
                     break  
                     
-        # Smaller is better for Google Colab
+        # I still can not get Google Colab to look better
         plt.figure(figsize=(6, 3)) 
         plt.rc('legend', fontsize='x-small')
         if(self.bm_returns is not None):
@@ -602,7 +602,7 @@ class MVPortfolio:
                     comparison_check_five = False
                     break  
 
-        # Smaller is better for Google Colab
+        # I still can not get Google Colab to look better
         plt.figure(figsize=(6, 3)) 
         plt.rc('legend', fontsize='x-small')
         if(self.bm_returns is not None):
