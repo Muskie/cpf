@@ -10,22 +10,27 @@ from collections import deque
 
 warnings.simplefilter('ignore')
 os.environ['PYTHONHASHSEED'] = '0'
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class QNetwork(nn.Module):
+    """Declares the QNetwork as subclass of the neural network base class."""
     def __init__(self, state_dim, action_dim, hu=24):
+        """QNetwork initiation method."""
         super(QNetwork, self).__init__()
         self.fc1 = nn.Linear(state_dim, hu)
         self.fc2 = nn.Linear(hu, hu)
         self.fc3 = nn.Linear(hu, action_dim)
     def forward(self, x):
+        """Defines the computation the neural network performs to transform input data into output predictions."""
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return self.fc3(x)
 
+
 class DQLAgent:
+    """Declares the DQLAgent class, a Deep Q-Learning Agent for exploring gammified environments."""
     def __init__(self, symbol, feature, n_features, env, hu=24, lr=0.001):
+        """DQLAgent initiation method."""
         self.epsilon = 1.0
         self.epsilon_decay = 0.9975
         self.epsilon_min = 0.1
@@ -37,16 +42,18 @@ class DQLAgent:
         self.n_features = n_features
         self.env = env
         self.episodes = 0
-        # Q-Network and optimizer
+        # Q-Network and optimizer which remains Adam
         self.model = QNetwork(self.n_features, self.env.action_space.n, hu).to(device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
         self.criterion = nn.MSELoss()
 
     def _reshape(self, state):
+        """Reshapes the state to treat the single observation as a batch size 1."""
         state = state.flatten()
         return np.reshape(state, [1, len(state)])
 
     def act(self, state):
+        """The DQL Agent performs an action from the action space."""
         if random.random() < self.epsilon:
             return self.env.action_space.sample()
         state_tensor = torch.FloatTensor(state).to(device)
@@ -57,6 +64,7 @@ class DQLAgent:
         return int(torch.argmax(q_values[0]).item())
 
     def replay(self):
+        """Stores the DQL Agent's experiece in a buffer to be used for training."""
         if len(self.memory) < self.batch_size:
             return
         batch = random.sample(self.memory, self.batch_size)
@@ -85,6 +93,7 @@ class DQLAgent:
             self.epsilon *= self.epsilon_decay
 
     def learn(self, episodes):
+        """Starts the learning for a DQL Agent for the number of episodes passed in."""
         for e in range(1, episodes + 1):
             self.episodes += 1
             state, _ = self.env.reset()
@@ -111,6 +120,7 @@ class DQLAgent:
             print()
 
     def test(self, episodes, min_accuracy=0.0, min_performance=0.0, verbose=True, full=True):
+        """Starts the testing of a DQL Agent for the number of episodes passed in."""
         # Backup and set environment thresholds
         ma = getattr(self.env, 'min_accuracy', None)
         if hasattr(self.env, 'min_accuracy'):

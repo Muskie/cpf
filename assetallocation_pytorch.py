@@ -12,42 +12,46 @@ import math
 import random
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy import stats
-from pylab import plt, mpl
 from scipy.optimize import minimize
 
 import torch
 from dqlagent_pytorch import *
 
 plt.style.use('seaborn-v0_8')
-mpl.rcParams['figure.dpi'] = 300
-mpl.rcParams['savefig.dpi'] = 300
-mpl.rcParams['font.family'] = 'serif'
 np.set_printoptions(suppress=True)
 
 
-
 class observation_space:
+    """observation_space class for Investing environment."""
     def __init__(self, n):
+        """observation_space initiation method."""
         self.shape = (n,)
 
 
 class action_space:
+    """action_space class for Investing environment."""
     def __init__(self, n):
+        """action_space initiation method."""
         self.n = n
     def seed(self, seed):
+        """Sets the seed for the action_space."""
         random.seed(seed)
     def sample(self):
-        # This is also number of assets, it is a one dimensional array of n random numbers [0.0, 1.0)
+        """Returns a sample set of actions, which is a onde dimensional array of n random numbers [0.0, 1.0)."""
         rn = np.random.random(self.n) 
         return rn / rn.sum()
 
+
 class Investing:
+    """Investing environment for the Investing Agent to explore."""
     def __init__(self, 
                  path,
                  holdings,
                  steps=252, 
                  amount=1):
+        """Investing environment initiation method."""
         self.path = path
         self.noa = len(holdings)
         self.holdings = holdings
@@ -67,6 +71,7 @@ class Investing:
         self.episode = 0
 
     def _generate_data(self):
+        """This function generates the performance data fetching it from a path if necessary."""
         if self.retrieved:
             pass
         else:
@@ -77,9 +82,11 @@ class Investing:
         self.data = self.data.iloc[s-self.steps:s] # this starts in a random place
         # This divides by initial price, I think this is why he uses prices it sets the location zero as a one
         # This normalizes the returns, neural networks are sensitive to scale of data, it graphs nice too.
+        # We'd have to fetch and normalize the benchmark returns to switch to Information Ratio
         self.data = self.data / self.data.iloc[0] 
 
     def _get_state(self):
+        """Gets the state of the Investing environment."""
         # This is a bit convoluted but it works
         self.asset_values = self.data[self.holdings].iloc[self.bar] 
         temp_array = self.asset_values.to_numpy() 
@@ -89,10 +96,12 @@ class Investing:
         return our_array
         
     def seed(self, seed=None):
+        """Returns the seed or generations a new random seed for the Investing enviroment."""
         if seed is not None:
             random.seed(seed)
             
     def reset(self):
+        """Resets the Investing environment."""
         self.asset_weights = [0] * self.noa
         self.bar = 0 
         self.treward = 0
@@ -104,9 +113,10 @@ class Investing:
         return self.state, info
 
     def add_results(self, pl):
+        """Adds the results of the episode to the portfolios dataframe of the Investing environment."""
         # It was possible to make the dataframe more programatically
         # I did preserve the original design though we always address columns by name.
-        # profit/loss (pl) is passed in, it can be zero so never divide by it.
+        # More columns would be needed for benchmark returns and active return
 
         asset_weight_columns = []
         new_columns = []
@@ -125,6 +135,7 @@ class Investing:
             counter += 1
 
         # Apparently I want extend not append when I have multiple values
+        # We would need to keep the bm, bm_new, and active return in our results as well to use Information Ratio
         main_columns_list.extend(['e', 'date'])
         main_columns_list.extend(asset_weight_columns)
         main_columns_list.extend(['pv', 'pv_new', 'p&l[$]', 'p&l[%]'])
@@ -150,6 +161,7 @@ class Investing:
 
     # If you get nan, you probably let one of the numbers below such as the new_pv go to infinity.
     def step(self, action):
+        """Step function for exploration of the Investing environment."""
         self.bar += 1
         self.new_state, info = self._get_state()
         self.date = info['date']
@@ -172,8 +184,8 @@ class Investing:
             # Rolling 20 trading days is used here, because we have a random sample of at least 252 trading days
             vol = self.portfolios['p&l[%]'].rolling(
                 20, min_periods=1).std().iloc[-1] * math.sqrt(252)
-            sharpe = ret / vol
-            reward = sharpe
+            sharpe = ret / vol 
+            reward = sharpe # Instead of Sharpe Ratio using Information Ratio as reward may yield better results
             self.portfolio_value = self.portfolio_value_new
         if self.bar == len(self.data) - 1:
             done = True
@@ -184,6 +196,7 @@ class Investing:
         
 
 class InvestingAgent(DQLAgent):
+    """Investing Agent a specialized DQLAgent for exploring the Investing Environment."""
     def __init__(self, 
                  symbol, 
                  feature, 
@@ -194,6 +207,7 @@ class InvestingAgent(DQLAgent):
                  starting_weights=None,
                  hu=24, 
                  lr=0.001):
+        """Initation method for Investing Agent class."""
         super().__init__(symbol, feature, n_features, env, hu, lr)
         # I now pass in bnds and the option to use weights other than equal as our first guess.
         # A QNetwork is a Continuous action: override model to output scalar Q-value
@@ -213,6 +227,7 @@ class InvestingAgent(DQLAgent):
             self.starting_weights = self.env.noa * [1 / self.env.noa]
             
     def opt_action(self, state):
+        """Decides the optimal action for the Investing Agent to take."""
         cons = [{'type': 'eq', 'fun': lambda x: x.sum() - 1}]
         def f_obj(x):
             s = state.copy() # Must copy here and also account for more assets.
@@ -233,13 +248,14 @@ class InvestingAgent(DQLAgent):
                            constraints=cons,
                            options={'eps': 1e-4}, # You can set an option to limit the interations and potentially gain speed.  
                            method='SLSQP') 
-            action = res['x'] # These are the weights that maximized.
+            action = res['x'] # These are the weights that are maximized.
         except Exception:
-            # This catch just does a sample aka random action, previously he did the same action as before.
+            # This catch just does a sample aka random action
             action = self.env.action_space.sample()
         return action
         
     def act(self, state):
+        """The method that caused the Investing Agent to act in the Investing environment."""
         if random.random() <= self.epsilon:
             our_action = self.env.action_space.sample()
         else:
@@ -247,6 +263,7 @@ class InvestingAgent(DQLAgent):
         return our_action
 
     def replay(self):
+        """Stores the Investing Agent's experiece in a buffer to be used for training."""
         if len(self.memory) < self.batch_size:
             return
         batch = random.sample(self.memory, self.batch_size)
@@ -270,13 +287,14 @@ class InvestingAgent(DQLAgent):
             self.epsilon *= self.epsilon_decay # This is where epsilon decays between start and min
 
     def test(self, episodes, verbose=True):
+        """The method that tests the skill of the Investing Agent in acting in the Investing environment."""
         for e in range(1, episodes + 1):
             state, _ = self.env.reset()
             state = self._reshape(state)
             treward = 0
             for _ in range(1, len(self.env.data) + 1):
                 action = self.opt_action(state)
-                # This is the key line, step returns state, reward (sharpe), done is True/False, trunc is always false and _
+                # This is a key line, step returns state, reward (sharpe), done is True/False, trunc is always false and _
                 # _ is an empty dictionary or set, it is always empty, probably for future use
                 state, reward, done, trunc, _ = self.env.step(action)
                 # print(_) # Always empty
@@ -288,4 +306,3 @@ class InvestingAgent(DQLAgent):
                         print(templ, end='\r') # Also doesn't print so well on Google Colab
                     break
         print()
-
